@@ -162,11 +162,11 @@ async def ws_connect(ws:WebSocket,code:str):
 async def apply_result(room,pick,counts):
     r=ROUNDS[room['round']]; option=r['options'][pick]; effect=dict(option[1]); old=dict(room['stats']); tags=[h['kind'] for h in room['history']]; bonus=[]
     if room['round']==6 and tags.count('market')>=4:
-        effect['stability']-=2; bonus.append('이전의 시장 중심 정책이 누적된 상태에서 경기 충격이 더 크게 나타났습니다.')
+        effect['stability']-=2; bonus.append('이전의 시장 중심 정책이 누적된 상태에서 경기 충격이 더 크게 나타났습니다. (경제 안정성 -2점)')
     if room['round']==7 and ('regulate' in tags):
-        effect['happiness']+=2; bonus.append('앞서 마련한 공공 대응 체계가 긴급 구호에 도움이 되었습니다.')
+        effect['happiness']+=2; bonus.append('앞서 마련한 공공 대응 체계가 긴급 구호에 도움이 되었습니다. (국민 만족도 +2점)')
     if room['round']==8 and tags.count('market')>=4 and option[3]=='market':
-        effect['growth']+=2; bonus.append('민간 혁신 경험이 쌓여 신기술 상용화가 빨라졌습니다.')
+        effect['growth']+=2; bonus.append('민간 혁신 경험이 쌓여 신기술 상용화가 빨라졌습니다. (경제 성장 +2점)')
     for k,v in effect.items(): room['stats'][k]=max(0,min(100,room['stats'][k]+v))
     result={'pick':pick,'counts':counts,'text':option[2], 'effect':effect,'bonus':bonus,'old':old,'new':dict(room['stats']),'choice':option[0]}
     room['last_result']=result;room['history'].append({'round':room['round']+1,'title':r['title'],'choice':option[0],'kind':option[3],'pick':pick,'effect':effect});room['phase']='revealed'
