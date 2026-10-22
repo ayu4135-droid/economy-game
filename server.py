@@ -21,7 +21,7 @@ BASE = Path(__file__).resolve().parent
 ROOMS = {}
 LOCK = asyncio.Lock()
 INITIAL = {'growth':50,'freedom':50,'equality':50,'stability':50,'happiness':50}
-LABELS = {'growth':'경제 성장','freedom':'자율성·창의성','equality':'경제적 평등','stability':'경제 안정성','happiness':'국민 만족도'}
+LABELS = {'growth':'경제 성장','freedom':'경제적 자유','equality':'경제적 평등','stability':'경제 안정성','happiness':'국민 만족도'}
 
 # Effects are game design scenarios, not empirical predictions.
 ROUNDS = [
@@ -53,7 +53,7 @@ def ending(room):
     elif s['equality']>=68 and s['freedom']<43: title='평등을 추구하지만 선택이 제한된 나라'; msg='기본 생활을 고르게 보장하려 했지만 시민의 선택과 새로운 시도도 중요해졌습니다.'
     elif min(s.values())>=48: title='균형을 찾아가는 나라'; msg='시장과 정부의 역할을 활용해 여러 목표 사이의 균형을 추구했습니다.'
     elif s['stability']<37: title='위기에 흔들리는 나라'; msg='경제적 충격과 물자 공급 문제에 대응할 제도가 필요합니다.'
-    else: title='새로운 선택을 고민하는 나라'; msg='경제 성장과 자율성, 평등과 안정을 함께 달성하기 위한 선택이 남아 있습니다.'
+    else: title='새로운 선택을 고민하는 나라'; msg='경제 성장과 경제적 자유, 평등과 안정을 함께 달성하기 위한 선택이 남아 있습니다.'
     return {'title':title,'message':msg,'counts':dict(n),'reflection':'누가 경제 문제를 결정했는가? 자유로운 선택과 계획적 배분은 각각 언제 효과적이었는가?'}
 
 async def broadcast(room):
