@@ -1,5 +1,7 @@
 """Economic Crossroads: classroom real-time polling game. Run: pip install -r requirements.txt && python server.py"""
 import asyncio
+import io
+import re
 import json
 import os
 import random
@@ -8,10 +10,11 @@ import string
 from collections import Counter
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import qrcode
 
 app = FastAPI(title='경제의 갈림길')
 BASE = Path(__file__).resolve().parent
@@ -62,6 +65,25 @@ async def broadcast(room):
 
 @app.get('/')
 async def index(): return FileResponse(BASE/'index.html')
+
+@app.get('/api/qr/{room_code}')
+async def room_qr(room_code: str, request: Request):
+    room_code = room_code.upper()
+    if not re.fullmatch(r'[A-Z0-9]{5}', room_code):
+        raise HTTPException(status_code=400, detail='Invalid room code')
+    # Encode only the public student joining URL. Never include the host token.
+    scheme = request.headers.get('x-forwarded-proto', request.url.scheme).split(',')[0].strip()
+    if scheme not in ('http', 'https'):
+        scheme = 'https'
+    host = request.headers.get('host', request.url.netloc)
+    url = f'{scheme}://{host}/?room={room_code}'
+    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=3)
+    qr.add_data(url)
+    qr.make(fit=True)
+    picture = qr.make_image(fill_color='black', back_color='white')
+    out = io.BytesIO()
+    picture.save(out, format='PNG')
+    return Response(content=out.getvalue(), media_type='image/png', headers={'Cache-Control':'no-store'})
 
 @app.get('/health')
 async def health(): return {'ok':True}
