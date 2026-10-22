@@ -12,12 +12,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import qrcode
 
 app = FastAPI(title='경제의 갈림길')
 BASE = Path(__file__).resolve().parent
+app.mount('/assets', StaticFiles(directory=BASE / 'assets'), name='assets')
 ROOMS = {}
 LOCK = asyncio.Lock()
 INITIAL = {'growth':50,'freedom':50,'equality':50,'stability':50,'happiness':50}
