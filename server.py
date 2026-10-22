@@ -123,7 +123,7 @@ async def ws_connect(ws:WebSocket,code:str):
         role='host' if init.get('token')==room['token'] else 'student'
         if role=='student':
             pid=str(init.get('pid') or secrets.token_urlsafe(12))[:64]
-            room['players'][pid]=sanitize(init.get('name') or '학생')
+            room['players'][pid]='익명 참가자'
         room['sockets'][ws]={'role':role,'pid':pid}
         await ws.send_json({'type':'joined','role':role,'pid':pid})
         await broadcast(room)
