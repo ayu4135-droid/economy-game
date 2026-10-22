@@ -95,7 +95,7 @@ async def create_room():
         code=''.join(secrets.choice(alphabet) for _ in range(5))
         while code in ROOMS: code=''.join(secrets.choice(alphabet) for _ in range(5))
         token=secrets.token_urlsafe(24)
-        ROOMS[code]={'code':code,'token':token,'stats':dict(INITIAL),'players':{},'votes':{},'phase':'voting','round':0,'last_result':None,'history':[],'sockets':{}}
+        ROOMS[code]={'code':code,'token':token,'stats':dict(INITIAL),'players':{},'votes':{},'phase':'lobby','round':0,'last_result':None,'history':[],'sockets':{}}
     return {'code':code,'host_token':token}
 
 @app.websocket('/ws/{code}')
@@ -120,6 +120,8 @@ async def ws_connect(ws:WebSocket,code:str):
             if action=='vote' and role=='student' and room['phase']=='voting' and room['round']<len(ROUNDS):
                 pick=data.get('choice')
                 if type(pick) is int and pick in (0,1): room['votes'][pid]=pick
+            elif role=='host' and action=='start' and room['phase']=='lobby':
+                room['phase']='voting'
             elif role=='host' and action=='reveal' and room['phase']=='voting' and room['round']<len(ROUNDS):
                 counts=Counter(room['votes'].values())
                 if not counts: await ws.send_json({'type':'notice','message':'먼저 학생 투표를 받아 주세요.'});continue
@@ -132,7 +134,7 @@ async def ws_connect(ws:WebSocket,code:str):
             elif role=='host' and action=='next' and room['phase']=='revealed':
                 room['round']+=1; room['votes']={};room['last_result']=None;room['phase']='finished' if room['round']>=len(ROUNDS) or min(room['stats'].values())<=0 else 'voting'
             elif role=='host' and action=='reset':
-                room['round']=0;room['phase']='voting';room['votes']={};room['history']=[];room['stats']=dict(INITIAL);room['last_result']=None
+                room['round']=0;room['phase']='lobby';room['votes']={};room['history']=[];room['stats']=dict(INITIAL);room['last_result']=None
             await broadcast(room)
     except (WebSocketDisconnect, asyncio.TimeoutError): pass
     except Exception as e:
