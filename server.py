@@ -38,14 +38,35 @@ def public_state(room, role, pid=None):
     return {'type':'state','room':room['code'],'role':role,'round':ridx,'total_rounds':len(ROUNDS),'phase':room['phase'],'stats':room['stats'],'labels':LABELS,'players':len(room['players']), 'voted':len(votes), 'votes':counts if role=='host' or revealed else None, 'my_vote':votes.get(pid) if pid else None,'current':({'title':current['title'],'story':current['story'],'options':[o[0] for o in current['options']]} if current else None), 'result':result,'history':room['history'] if finished or role=='host' else None,'ending':ending(room) if finished else None}
 
 def ending(room):
-    s=room['stats']; n=Counter(h['kind'] for h in room['history']);
-    if min(s.values())<=0: title='국가 운영 위기'; msg='어떤 지표가 바닥나 국가 운영에 큰 위기가 찾아왔습니다.'
-    elif s['growth']>=68 and s['freedom']>=68 and s['equality']<45: title='혁신은 눈부시지만 격차가 큰 나라'; msg='기업과 시민의 창의성이 성장을 이끌었지만 불평등 문제를 해결해야 합니다.'
-    elif s['equality']>=68 and s['freedom']<43: title='평등을 추구하지만 선택이 제한된 나라'; msg='기본 생활을 고르게 보장하려 했지만 시민의 선택과 새로운 시도도 중요해졌습니다.'
-    elif min(s.values())>=48: title='균형을 찾아가는 나라'; msg='시장과 정부의 역할을 활용해 여러 목표 사이의 균형을 추구했습니다.'
-    elif s['stability']<37: title='위기에 흔들리는 나라'; msg='경제적 충격과 물자 공급 문제에 대응할 제도가 필요합니다.'
-    else: title='새로운 선택을 고민하는 나라'; msg='경제 성장과 경제적 자유, 평등과 안정을 함께 달성하기 위한 선택이 남아 있습니다.'
-    return {'title':title,'message':msg,'counts':dict(n),'reflection':'누가 경제 문제를 결정했는가? 자유로운 선택과 계획적 배분은 각각 언제 효과적이었는가?'}
+    """Mutually exclusive ending precedence; calibrated against all 2^10 vote outcomes.
+
+    Scores are classroom game abstractions, not rankings of real economic systems.
+    """
+    s = room['stats']
+    n = Counter(h['kind'] for h in room['history'])
+    growth, freedom, equality, stability = (s[k] for k in ('growth', 'freedom', 'equality', 'stability'))
+
+    # Severe combined vulnerability, rather than an unreachable 0-point condition.
+    if stability <= 38 and equality <= 48:
+        title = '국가 운영 위기'
+        msg = '경제 안정성과 분배 여건이 동시에 악화되어 어려움이 커졌습니다. 공급과 생활 안정을 회복할 대책이 필요합니다.'
+    elif stability <= 43:
+        title = '위기에 흔들리는 나라'
+        msg = '경제 성장의 성과와 별개로 충격에 대응하는 힘이 부족합니다. 변동에 대비할 장치를 마련해야 합니다.'
+    elif freedom >= 75 and equality <= 48:
+        title = '혁신은 눈부시지만 격차가 큰 나라'
+        msg = '자유로운 경제활동과 혁신은 활발하지만 경제적 격차가 커졌습니다. 성장의 성과를 어떻게 나눌지 고민해야 합니다.'
+    elif equality >= 68 and freedom <= 42:
+        title = '평등을 추구하지만 선택이 제한된 나라'
+        msg = '생활 여건을 고르게 만드는 데 힘썼지만 경제적 선택의 폭이 좁아졌습니다. 다양한 시도를 넓힐 방안을 고민해야 합니다.'
+    elif min(s.values()) >= 49 and max(s.values()) - min(s.values()) <= 30:
+        title = '균형을 찾아가는 나라'
+        msg = '다섯 목표 사이의 격차를 비교적 작게 유지했습니다. 앞으로도 성장·자유·평등·안정을 함께 고려해야 합니다.'
+    else:
+        title = '새로운 선택을 고민하는 나라'
+        msg = '어느 한 방향으로만 설명하기 어려운 성과와 과제가 함께 나타났습니다. 앞으로의 우선순위를 새롭게 정할 때입니다.'
+    return {'title': title, 'message': msg, 'counts': dict(n),
+            'reflection': '누가 경제 문제를 결정했는가? 자유로운 선택과 계획적 배분은 각각 언제 효과적이었는가?'}
 
 async def broadcast(room):
     dead=[]
