@@ -33,13 +33,43 @@
 <script>
 const $=id=>document.getElementById(id);const initialCode=new URLSearchParams(location.search).get('room');if(initialCode)$('joinCode').value=initialCode.toUpperCase();
 let ws=null,role=null,code=null,token=null,pid=null,current=null;
-// 교사 화면에서만 재생되는 브라우저 합성 배경음악. 외부 음원 요청이 없습니다.
+// 교사용 125 BPM 게임 리듬 BGM. 외부 음원 및 학생 재생 없음.
 let musicCtx=null,musicBus=null,musicRunning=false,musicLoop=null,musicStep=0;
-const musicNotes=[261.63,329.63,392,329.63,293.66,349.23,440,349.23,261.63,329.63,392,523.25,293.66,349.23,392,329.63];
-function soundNote(freq,when){if(!musicCtx||!musicBus)return;const osc=musicCtx.createOscillator(),gain=musicCtx.createGain();osc.type='sine';osc.frequency.setValueAtTime(freq,when);gain.gain.setValueAtTime(0.0001,when);gain.gain.exponentialRampToValueAtTime(0.17,when+0.04);gain.gain.exponentialRampToValueAtTime(0.0001,when+0.68);osc.connect(gain);gain.connect(musicBus);osc.start(when);osc.stop(when+0.72);}
-function musicTick(){if(!musicRunning||!musicCtx)return;const now=musicCtx.currentTime;const n=musicStep%musicNotes.length;soundNote(musicNotes[n],now+0.015);if(n%4===0)soundNote(musicNotes[n]/2,now+0.015);musicStep++;}
-function setMusicUi(){const b=$('musicToggle');if(!b)return;b.classList.toggle('hidden',role!=='host');b.textContent=musicRunning?'♫ 배경음악 끄기':'♫ 배경음악 켜기';b.setAttribute('aria-pressed',String(musicRunning));}
-async function toggleMusic(){if(role!=='host')return;const b=$('musicToggle');try{if(musicRunning){musicRunning=false;clearInterval(musicLoop);musicLoop=null;if(musicCtx)await musicCtx.suspend();}else{const AudioContextCtor=window.AudioContext||window.webkitAudioContext;if(!AudioContextCtor){toast('이 브라우저에서는 음악을 지원하지 않습니다.');return;}if(!musicCtx){musicCtx=new AudioContextCtor();musicBus=musicCtx.createGain();musicBus.gain.value=0.12;musicBus.connect(musicCtx.destination);}await musicCtx.resume();musicRunning=true;musicTick();musicLoop=setInterval(musicTick,750);}setMusicUi();}catch(e){musicRunning=false;setMusicUi();toast('소리를 켜려면 음악 버튼을 다시 눌러 주세요.');}}
+const MUSIC_STEP_MS=240; // 8분음표 기준 약 125 BPM
+const musicNotes=[392,523.25,659.25,523.25,440,587.33,659.25,587.33,392,523.25,783.99,659.25,440,587.33,698.46,587.33,
+329.63,440,659.25,440,349.23,493.88,659.25,493.88,329.63,440,783.99,659.25,349.23,493.88,698.46,493.88];
+function musicTone(freq,when,duration,volume,type='triangle'){
+ if(!musicCtx||!musicBus)return;
+ const osc=musicCtx.createOscillator(),env=musicCtx.createGain();osc.type=type;osc.frequency.setValueAtTime(freq,when);
+ env.gain.setValueAtTime(0.0001,when);
+ env.gain.exponentialRampToValueAtTime(volume,when+0.012);
+ env.gain.exponentialRampToValueAtTime(0.0001,when+duration);
+ osc.connect(env);env.connect(musicBus);osc.start(when);osc.stop(when+duration+0.015);
+}
+function musicTick(){
+ if(!musicRunning||!musicCtx)return;
+ const when=musicCtx.currentTime+0.018,n=musicStep%musicNotes.length;
+ musicTone(musicNotes[n],when,0.19,0.14);
+ // 매 박자와 마디 시작에 낮은 리듬을 얹어 게임 진행감 부여
+ if(n%2===0)musicTone(196,when,0.085,0.075,'sine');
+ if(n%8===0)musicTone(n<16?130.81:110,when,0.29,0.15,'sine');
+ if(n%4===2)musicTone(784,when,0.045,0.025,'sine');
+ musicStep++;
+}
+function setMusicUi(){const b=$('musicToggle');if(!b)return;b.classList.toggle('hidden',role!=='host');b.textContent=musicRunning?'♫ 신나는 BGM 끄기':'♫ 신나는 BGM 켜기';b.setAttribute('aria-pressed',String(musicRunning));}
+async function toggleMusic(){
+ if(role!=='host')return;
+ try{
+  if(musicRunning){musicRunning=false;clearInterval(musicLoop);musicLoop=null;if(musicCtx)await musicCtx.suspend();}
+  else{
+   const Ctx=window.AudioContext||window.webkitAudioContext;
+   if(!Ctx){toast('이 브라우저에서는 음악을 지원하지 않습니다.');return;}
+   if(!musicCtx){musicCtx=new Ctx();musicBus=musicCtx.createGain();musicBus.gain.value=0.17;musicBus.connect(musicCtx.destination);}
+   await musicCtx.resume();musicRunning=true;musicStep=0;musicTick();musicLoop=setInterval(musicTick,MUSIC_STEP_MS);
+  }
+  setMusicUi();
+ }catch(e){musicRunning=false;clearInterval(musicLoop);musicLoop=null;setMusicUi();toast('음악을 시작할 수 없습니다. 버튼을 다시 눌러 주세요.');}
+}
 $('musicToggle').onclick=toggleMusic;
 
 let timerDeadlineMs=0;
