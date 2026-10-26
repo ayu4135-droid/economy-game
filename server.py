@@ -79,11 +79,11 @@ async def broadcast(room):
 async def launch_timer(room):
     old = room.get('timer_task')
     if old and not old.done(): old.cancel()
-    room['deadline'] = time.monotonic() + 30
+    room['deadline'] = time.monotonic() + 60
     round_number = room['round']
     async def timeout():
         try:
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
             if room['phase'] != 'voting' or room['round'] != round_number: return
             counts = Counter(room['votes'].values())
             if len(room['votes']) == 0 or counts[0] == counts[1]:
