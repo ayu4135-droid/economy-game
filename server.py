@@ -158,7 +158,17 @@ async def ws_connect(ws:WebSocket,code:str):
             data=await ws.receive_json(); action=data.get('action')
             if action=='vote' and role=='student' and room['phase']=='voting' and room['round']<len(ROUNDS):
                 pick=data.get('choice')
-                if room.get('deadline') and time.monotonic() < room['deadline'] and type(pick) is int and pick in (0,1): room['votes'][pid]=pick
+                if room.get('deadline') and time.monotonic() < room['deadline'] and type(pick) is int and pick in (0,1):
+                    room['votes'][pid] = pick
+                    # End early once every registered participant has cast a vote.
+                    # A replacement vote from the same participant does not increase the count.
+                    if room['players'] and all(player_id in room['votes'] for player_id in room['players']):
+                        await stop_timer(room)
+                        counts = Counter(room['votes'].values())
+                        if counts[0] == counts[1]:
+                            room['phase'] = 'tiebreak'
+                        else:
+                            await apply_result(room, 0 if counts[0] > counts[1] else 1, dict(counts))
             elif role=='host' and action=='start' and room['phase']=='lobby':
                 room['phase']='voting'
                 await launch_timer(room)
